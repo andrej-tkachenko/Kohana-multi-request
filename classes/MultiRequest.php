@@ -1,5 +1,5 @@
 <?php
 
-class MultiRequest {
+class MultiRequest extends Kohana_MultiRequest {
 
 }
