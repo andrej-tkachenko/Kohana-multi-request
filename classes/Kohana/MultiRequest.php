@@ -8,6 +8,10 @@ class Kohana_MultiRequest {
 	private $cm;
 	private $handles = [];
 
+	/**
+	 * @param array $options опции для curl_multi
+	 * @throws Curl_Exception
+	 */
 	public function __construct($options = [])
 	{
 		$this->cm = curl_multi_init();
@@ -27,7 +31,10 @@ class Kohana_MultiRequest {
 		curl_multi_close($this->cm);
 	}
 
-
+	/**
+	 * @param Request $request
+	 * @throws Curl_Exception
+	 */
 	public function add(Request $request)
 	{
 		/**
@@ -98,6 +105,10 @@ class Kohana_MultiRequest {
 		$this->handles[] = $curl;
 	}
 
+	/**
+	 * @param callable $f
+	 * @throws Kohana_Exception
+	 */
 	public function execute(callable $f)
 	{
 		/**
