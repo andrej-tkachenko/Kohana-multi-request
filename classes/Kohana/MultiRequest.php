@@ -82,7 +82,7 @@ class Kohana_MultiRequest {
 		// Добавление GET-параметров
 		if ($query = $request->query())
 		{
-			$uri .= '?'.http_build_query($query, NULL, '&');
+			$uri .= '?'.http_build_query($query, NULL, '&', PHP_QUERY_RFC3986);
 		}
 
 		if ( ! curl_setopt_array($curl, $options))
