@@ -115,7 +115,7 @@ class Kohana_MultiRequest {
 		while ($running > 0);
 
 		// Получение ответа, удаление дескриптора из набора, закрытие дескриптора
-		foreach ($this->handles as $h)
+		foreach ($this->handles as $k => &$h)
 		{
 			$response = new Response();
 
@@ -142,6 +142,7 @@ class Kohana_MultiRequest {
 
 			curl_multi_remove_handle($this->cm, $h);
 			curl_close($h);
+			unset($this->handles[$k]);
 		}
 	}
 }
