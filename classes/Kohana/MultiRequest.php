@@ -42,25 +42,18 @@ class Kohana_MultiRequest {
 
 		$curl = curl_init();
 
-		/* =========================================================================== */
 		$options = [];
 
-		// Set the request method
 		$options = $client->_set_curl_request_method($request, $options);
 
-		// Set the request body. This is perfectly legal in CURL even
-		// if using a request other than POST. PUT does support this method
-		// and DOES NOT require writing data to disk before putting it, if
-		// reading the PHP docs you may have got that impression. SdF
-		// This will also add a Content-Type: application/x-www-form-urlencoded header unless you override it
 		if ($body = $request->body()) {
 			$options[CURLOPT_POSTFIELDS] = $body;
 		}
 
-		// Process headers
+		// Обработка заголовков
 		if ($headers = $request->headers())
 		{
-			$http_headers = array();
+			$http_headers = [];
 
 			foreach ($headers as $key => $value)
 			{
@@ -70,50 +63,39 @@ class Kohana_MultiRequest {
 			$options[CURLOPT_HTTPHEADER] = $http_headers;
 		}
 
-		// Process cookies
+		// Обработка cookies
 		if ($cookies = $request->cookie())
 		{
 			$options[CURLOPT_COOKIE] = http_build_query($cookies, NULL, '; ');
 		}
 
-//		$response = Response::factory();
-		// Get any exisiting response headers
-//		$response_header = $response->headers();
-
-		// Implement the standard parsing parameters
-//		$options[CURLOPT_HEADERFUNCTION]        = array($response_header, 'parse_header_string');
-
 		$client_options = $client->options();
 		$client_options[CURLOPT_RETURNTRANSFER] = TRUE;
+		// Обязательно возвращать заголовки! Иначе будут ошибки в работе
 		$client_options[CURLOPT_HEADER]         = TRUE;
 
-		// Apply any additional options set to
+		// Слияние параметров curl
 		$options += $client_options;
 
 		$uri = $request->uri();
 
+		// Добавление GET-параметров
 		if ($query = $request->query())
 		{
 			$uri .= '?'.http_build_query($query, NULL, '&');
 		}
-		/* =========================================================================== */
 
-		// Set connection options
 		if ( ! curl_setopt_array($curl, $options))
 		{
-			throw new Request_Exception('Failed to set CURL options, check CURL documentation: :url',
+			throw new Curl_Exception('Failed to set CURL options, check CURL documentation: :url',
 				[':url' => 'http://php.net/manual/en/function.curl-setopt-array.php']);
-		}
-
-		if ( ! UTF8::is_ascii($request->uri()))
-		{
-			$request->uri(curl_escape($curl, $request->uri()));
 		}
 
 		curl_setopt($curl, CURLOPT_URL, $uri);
 
 		if (curl_multi_add_handle($this->cm, $curl) !== 0)
 		{
+			// :TODO: сделать проверку на существование функции
 			// Доступно с PHP 7 >= 7.1.0
 			throw new Curl_Exception(curl_multi_errno($this->cm));
 		}
@@ -139,14 +121,13 @@ class Kohana_MultiRequest {
 		}
 		while ($running > 0);
 
-		// echo the content, remove the handlers, then close them
+		// Получение ответа, удаление дескриптора из набора, закрытие дескриптора
 		foreach ($this->handles as $h)
 		{
 			$response = new Response();
 
 			$body = curl_multi_getcontent($h);
 
-			// Get the response information
 			$code        = curl_getinfo($h, CURLINFO_HTTP_CODE);
 			$header_size = curl_getinfo($h, CURLINFO_HEADER_SIZE);
 
@@ -158,7 +139,7 @@ class Kohana_MultiRequest {
 			if (isset($error))
 			{
 				throw new Request_Exception('Error fetching remote :url [ status :code ] :error',
-					array(':url' => curl_getinfo($h, CURLINFO_EFFECTIVE_URL), ':code' => $code, ':error' => $error));
+					[':url' => curl_getinfo($h, CURLINFO_EFFECTIVE_URL), ':code' => $code, ':error' => $error]);
 			}
 
 			$response->status($code);
