@@ -16,7 +16,7 @@ class Kohana_MultiRequest {
 		{
 			if ( ! curl_multi_setopt($this->cm, $option, $value))
 			{
-				throw new Request_Exception('Failed to set CURL options, check CURL documentation: :url',
+				throw new Curl_Exception('Failed to set CURL options, check CURL documentation: :url',
 					[':url' => 'http://php.net/manual/en/function.curl-multi-setopt.php']);
 			}
 		}
@@ -93,30 +93,23 @@ class Kohana_MultiRequest {
 
 		curl_setopt($curl, CURLOPT_URL, $uri);
 
-		if (curl_multi_add_handle($this->cm, $curl) !== 0)
-		{
-			// :TODO: сделать проверку на существование функции
-			// Доступно с PHP 7 >= 7.1.0
-			throw new Curl_Exception(curl_multi_errno($this->cm));
-		}
+		curl_multi_add_handle($this->cm, $curl);
 
 		$this->handles[] = $curl;
 	}
 
 	public function execute(callable $f)
 	{
-		// execute - if there is an active connection then keep looping
-//		$active = NULL;
-
-		/*do
-		{
-			$status = curl_multi_exec($this->cm, $active);
-		}
-		while ($active AND $status == CURLM_OK);*/
-
+		/**
+		 * @link http://php.net/manual/en/function.curl-multi-exec.php#113002
+		 */
 		do
 		{
 			curl_multi_exec($this->cm, $running);
+			/*
+			 * Данная функция сокращает количество итераций цикла - блокируя скрипт, оптимизируя работу соединений,
+			 * тем самым не позволяя нагружать CPU
+			 */
 			curl_multi_select($this->cm);
 		}
 		while ($running > 0);
@@ -128,31 +121,25 @@ class Kohana_MultiRequest {
 
 			$body = curl_multi_getcontent($h);
 
-			$code        = curl_getinfo($h, CURLINFO_HTTP_CODE);
-			$header_size = curl_getinfo($h, CURLINFO_HEADER_SIZE);
-
-			if ($body === FALSE)
+			// Если CURLOPT_RETURNTRANSFER не равен FALSE
+			if ( ! is_null($body))
 			{
-				$error = curl_error($h);
+				$code        = curl_getinfo($h, CURLINFO_HTTP_CODE);
+				$header_size = curl_getinfo($h, CURLINFO_HEADER_SIZE);
+
+				$response->status($code);
+				$response->body(substr($body, $header_size));
+				$response->protocol(substr($body, 0, 8));
+
+				/**
+				 * @var $headers HTTP_Header
+				 */
+				$headers = $response->headers();
+				$headers->parse_header_string(NULL, substr($body, 0, $header_size));
+
+				call_user_func($f, $response);
 			}
 
-			if (isset($error))
-			{
-				throw new Request_Exception('Error fetching remote :url [ status :code ] :error',
-					[':url' => curl_getinfo($h, CURLINFO_EFFECTIVE_URL), ':code' => $code, ':error' => $error]);
-			}
-
-			$response->status($code);
-			$response->body(substr($body, $header_size));
-			$response->protocol(substr($body, 0, 8));
-
-			/**
-			 * @var $headers HTTP_Header
-			 */
-			$headers = $response->headers();
-			$headers->parse_header_string(NULL, substr($body, 0, $header_size));
-
-			call_user_func($f, $response);
 			curl_multi_remove_handle($this->cm, $h);
 			curl_close($h);
 		}
