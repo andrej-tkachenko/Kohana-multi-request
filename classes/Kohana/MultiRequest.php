@@ -133,7 +133,7 @@ class Kohana_MultiRequest {
 			$body = curl_multi_getcontent($h);
 
 			// Если CURLOPT_RETURNTRANSFER не равен FALSE
-			if ( ! is_null($body))
+			if ( ! empty($body))
 			{
 				$code        = curl_getinfo($h, CURLINFO_HTTP_CODE);
 				$header_size = curl_getinfo($h, CURLINFO_HEADER_SIZE);
