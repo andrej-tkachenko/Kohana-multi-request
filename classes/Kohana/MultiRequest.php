@@ -53,9 +53,13 @@ class Kohana_MultiRequest {
 
 		$options = $client->_set_curl_request_method($request, $options);
 
-		if ($body = $request->body()) {
+		// :TODO: добавить поддержку multipart/form-data
+		if ($body = $request->body())
+		{
 			$options[CURLOPT_POSTFIELDS] = $body;
 		}
+
+		$request->headers('content-length', (string) $request->content_length());
 
 		// Обработка заголовков
 		if ($headers = $request->headers())
