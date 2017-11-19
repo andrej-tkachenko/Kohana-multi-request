@@ -42,3 +42,23 @@ foreach ($daterange as $date)
 
 $multi->execute($func);
 ```
+
+### Ограничение потоков
+Цикл foreach в примере выше переписать:
+```php
+// 4 потока
+foreach (array_chunk($daterange, 4, TRUE) as $chunk)
+{
+	foreach ($chunk as $date)
+	{
+		/**
+		 * @var $date Datetime
+		 */
+		$multi->add($request->query('date_req', $date->format('d/m/Y')));
+	}
+
+	$multi->execute($func);
+	
+	// sleep(2);
+}
+```
