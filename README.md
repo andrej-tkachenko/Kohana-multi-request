@@ -47,7 +47,7 @@ $multi->execute($func);
 ### Ограничение потоков
 Цикл foreach в примере выше переписать:
 ```php
-// 4 потока
+// 4 потока. Эмуляция через цикл и разбивку массива array_chunk
 foreach (array_chunk($daterange, 4, TRUE) as $chunk)
 {
 	foreach ($chunk as $date)
