@@ -140,10 +140,9 @@ class Kohana_MultiRequest {
 			// Если CURLOPT_RETURNTRANSFER не равен FALSE
 			if ( ! empty($body))
 			{
-				$code        = curl_getinfo($h, CURLINFO_HTTP_CODE);
 				$header_size = curl_getinfo($h, CURLINFO_HEADER_SIZE);
 
-				$response->status($code);
+				$response->status(curl_getinfo($h, CURLINFO_HTTP_CODE));
 				$response->body(substr($body, $header_size));
 				$response->protocol(substr($body, 0, 8));
 
