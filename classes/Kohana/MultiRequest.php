@@ -153,7 +153,7 @@ class Kohana_MultiRequest {
 				$headers = $response->headers();
 				$headers->parse_header_string(NULL, substr($body, 0, $header_size));
 
-				call_user_func($f, $response);
+				call_user_func($f, $response, curl_getinfo($h, CURLINFO_EFFECTIVE_URL));
 			}
 
 			curl_multi_remove_handle($this->cm, $h);
