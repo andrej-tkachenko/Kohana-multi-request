@@ -7,6 +7,7 @@ class Kohana_MultiRequest {
 	 */
 	private $cm;
 	private $handles = [];
+	private $storage;
 
 	/**
 	 * @param array $options опции для curl_multi
@@ -24,6 +25,8 @@ class Kohana_MultiRequest {
 					[':url' => 'http://php.net/manual/en/function.curl-multi-setopt.php']);
 			}
 		}
+
+		$this->storage = new SplObjectStorage;
 	}
 
 	public function __destruct()
@@ -107,7 +110,17 @@ class Kohana_MultiRequest {
 
 		curl_multi_add_handle($this->cm, $curl);
 
-		$this->handles[] = $curl;
+		/*
+		 * Получение идентификатора ресурса
+		 * Из-за curl_multi_add_handle происходит коллекционирование ресурсов curl, из-за чего get_resources() возвращает
+		 * в каждой новой вставке полный массив всех ранее добавленных ресурсов
+		 */
+//		$curl_resource_id = key(get_resources(get_resource_type($curl)));
+		$curl_resource_id = (int) $curl;
+
+		$this->handles[$curl_resource_id] = $curl;
+
+		$this->storage->attach($request, $curl_resource_id);
 	}
 
 	/**
@@ -131,6 +144,10 @@ class Kohana_MultiRequest {
 		while ($running > 0);
 
 		// Получение ответа, удаление дескриптора из набора, закрытие дескриптора
+		/**
+		 * @var integer  $k curl resource id
+		 * @var resource $h curl-handle
+		 */
 		foreach ($this->handles as $k => &$h)
 		{
 			$response = new Response();
@@ -152,7 +169,17 @@ class Kohana_MultiRequest {
 				$headers = $response->headers();
 				$headers->parse_header_string(NULL, substr($body, 0, $header_size));
 
-				call_user_func($f, $response, curl_getinfo($h, CURLINFO_EFFECTIVE_URL));
+				foreach ($this->storage as $request)
+				{
+					if ($this->storage->getInfo() == $k)
+					{
+						call_user_func($f, $response, $request);
+
+						$this->storage->detach($request);
+
+						break;
+					}
+				}
 			}
 
 			curl_multi_remove_handle($this->cm, $h);
