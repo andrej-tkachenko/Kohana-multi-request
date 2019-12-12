@@ -11,6 +11,7 @@ class Kohana_MultiRequest {
 
 	/**
 	 * @param array $options опции для curl_multi
+	 * @link https://curl.haxx.se/libcurl/c/curl_multi_setopt.html
 	 * @throws Curl_Exception
 	 */
 	public function __construct($options = [])
@@ -35,7 +36,7 @@ class Kohana_MultiRequest {
 	}
 
 	/**
-	 * @param Request $request
+	 * @param Request $request кроме options никакие другие параметры не поддерживаются
 	 * @throws Curl_Exception
 	 */
 	public function add(Request $request)
@@ -144,22 +145,30 @@ class Kohana_MultiRequest {
 		while ($running > 0);
 
 		// Получение ответа, удаление дескриптора из набора, закрытие дескриптора
-		/**
-		 * @var integer  $k curl resource id
-		 * @var resource $h curl-handle
-		 */
-		foreach ($this->handles as $k => &$h)
+		foreach ($this->handles as $resource_id => $curl)
 		{
 			$response = new Response();
 
-			$body = curl_multi_getcontent($h);
+			$body = curl_multi_getcontent($curl);
 
-			// Если CURLOPT_RETURNTRANSFER не равен FALSE
-			if ( ! empty($body))
+			// Будет выброшено исключение, если статус будет нулевым
+			try
 			{
-				$header_size = curl_getinfo($h, CURLINFO_HEADER_SIZE);
+				$response->status(curl_getinfo($curl, CURLINFO_HTTP_CODE));
+			}
+			catch (Kohana_Exception $e)
+			{
+				throw new Request_Exception('Error fetching remote :url [ status :code ] :error', [
+					':url'   => curl_getinfo($curl, CURLINFO_EFFECTIVE_URL),
+					':code'  => curl_getinfo($curl, CURLINFO_HTTP_CODE),
+					':error' => $e->getMessage(),
+				], $e->getCode(), $e);
+			}
 
-				$response->status(curl_getinfo($h, CURLINFO_HTTP_CODE));
+			$header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+
+			if ($header_size > 0)
+			{
 				$response->body(substr($body, $header_size));
 				$response->protocol(substr($body, 0, 8));
 
@@ -168,23 +177,23 @@ class Kohana_MultiRequest {
 				 */
 				$headers = $response->headers();
 				$headers->parse_header_string(NULL, substr($body, 0, $header_size));
+			}
 
-				foreach ($this->storage as $request)
+			foreach ($this->storage as $request)
+			{
+				if ($this->storage->getInfo() == $resource_id)
 				{
-					if ($this->storage->getInfo() == $k)
-					{
-						call_user_func($f, $response, $request);
+					call_user_func($f, $response, $request);
 
-						$this->storage->detach($request);
+					$this->storage->detach($request);
 
-						break;
-					}
+					break;
 				}
 			}
 
-			curl_multi_remove_handle($this->cm, $h);
-			curl_close($h);
-			unset($this->handles[$k]);
+			curl_multi_remove_handle($this->cm, $curl);
+			curl_close($curl);
+			unset($this->handles[$resource_id]);
 		}
 	}
 }
