@@ -25,7 +25,7 @@ $request = new Request('http://www.cbr.ru/scripts/XML_daily.asp', [
 ]);
 
 // Callback-функция для обработки ответа
-$func = function (Response $response)
+$func = function (Response $response, Request $request)
 {
 	return $response->body();
 };
