@@ -18,16 +18,16 @@ $daterange = new DatePeriod($begin, $interval, $end);
 
 // Подготовка запроса, который будет использоваться в мультизагрузке
 $request = new Request('http://www.cbr.ru/scripts/XML_daily.asp', [
-	'options' => [
-		CURLOPT_TIMEOUT   => 30,
-		CURLOPT_ENCODING  => '', // identity, deflate и gzip
-	]
+    'options' => [
+        CURLOPT_TIMEOUT   => 30,
+        CURLOPT_ENCODING  => '', // identity, deflate и gzip
+    ]
 ]);
 
 // Callback-функция для обработки ответа
 $func = function (Response $response, Request $request)
 {
-	return $response->body();
+    return $response->body();
 };
 
 // Создание объекта для множественных запросов
@@ -35,10 +35,10 @@ $multi = new MultiRequest();
 
 foreach ($daterange as $date)
 {
-	/**
-	 * @var $date Datetime
-	 */
-	$multi->add($request->query('date_req', $date->format('d/m/Y')));
+    /**
+     * @var $date Datetime
+     */
+    $multi->add($request->query('date_req', $date->format('d/m/Y')));
 }
 
 $multi->execute($func);
@@ -50,16 +50,16 @@ $multi->execute($func);
 // 4 потока. Эмуляция через цикл и разбивку массива array_chunk
 foreach (array_chunk($daterange, 4, TRUE) as $chunk)
 {
-	foreach ($chunk as $date)
-	{
-		/**
-		 * @var $date Datetime
-		 */
-		$multi->add($request->query('date_req', $date->format('d/m/Y')));
-	}
+    foreach ($chunk as $date)
+    {
+        /**
+         * @var $date Datetime
+         */
+        $multi->add($request->query('date_req', $date->format('d/m/Y')));
+    }
 
-	$multi->execute($func);
-	
-	// sleep(2);
+    $multi->execute($func);
+    
+    // sleep(2);
 }
 ```
