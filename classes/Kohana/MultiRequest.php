@@ -127,6 +127,7 @@ class Kohana_MultiRequest {
 	/**
 	 * @param callable $f
 	 * @throws Kohana_Exception
+	 * @throws Request_Exception
 	 */
 	public function execute(callable $f)
 	{
@@ -149,23 +150,22 @@ class Kohana_MultiRequest {
 		{
 			$response = new Response();
 
-			$body = curl_multi_getcontent($curl);
+			$error = NULL;
+
+			$body          = curl_multi_getcontent($curl);
+			$status        = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+			$effective_url = curl_getinfo($curl, CURLINFO_EFFECTIVE_URL);
+			$header_size   = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
 
 			// Будет выброшено исключение, если статус будет нулевым
 			try
 			{
-				$response->status(curl_getinfo($curl, CURLINFO_HTTP_CODE));
+				$response->status($status);
 			}
 			catch (Kohana_Exception $e)
 			{
-				throw new Request_Exception('Error fetching remote :url [ status :code ] :error', [
-					':url'   => curl_getinfo($curl, CURLINFO_EFFECTIVE_URL),
-					':code'  => curl_getinfo($curl, CURLINFO_HTTP_CODE),
-					':error' => $e->getMessage(),
-				], $e->getCode(), $e);
+				$error = $e;
 			}
-
-			$header_size = curl_getinfo($curl, CURLINFO_HEADER_SIZE);
 
 			if ($header_size > 0)
 			{
@@ -194,6 +194,15 @@ class Kohana_MultiRequest {
 			curl_multi_remove_handle($this->cm, $curl);
 			curl_close($curl);
 			unset($this->handles[$resource_id]);
+
+			if ($error !== NULL)
+			{
+				throw new Request_Exception('Error fetching remote :url [ status :code ] :error', [
+					':url'   => $effective_url,
+					':code'  => $status,
+					':error' => $error->getMessage(),
+				], $error->getCode(), $error);
+			}
 		}
 	}
 }
