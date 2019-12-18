@@ -57,14 +57,19 @@ class Kohana_MultiRequest {
 
 		$options = $client->_set_curl_request_method($request, $options);
 
+		// Добавление POST-параметров
+		if ($post = $request->post())
+		{
+			$request->body(http_build_query($post, NULL, '&'))
+					->headers('content-type', 'application/x-www-form-urlencoded; charset='.Kohana::$charset);
+		}
+
 		if ($body = $request->body())
 		{
 			$options[CURLOPT_POSTFIELDS] = $body;
 		}
-		else
-		{
-			$request->headers('content-length', (string) $request->content_length());
-		}
+
+		$request->headers('content-length', (string) $request->content_length());
 
 		// Обработка заголовков
 		if ($headers = $request->headers())
