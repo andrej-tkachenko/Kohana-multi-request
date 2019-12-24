@@ -126,7 +126,7 @@ class Kohana_MultiRequest {
 
 		$this->handles[$curl_resource_id] = $curl;
 
-		$this->storage->attach($request, $curl_resource_id);
+		$this->storage->attach(clone $request, $curl_resource_id);
 	}
 
 	/**
